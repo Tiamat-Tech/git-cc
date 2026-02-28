@@ -2,10 +2,11 @@ package single_select
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"github.com/muesli/reflow/indent"
 	"github.com/muesli/reflow/padding"
 	"github.com/muesli/reflow/wordwrap"
@@ -37,7 +38,7 @@ func NewModel(context string, value string, options []string, hints []string, ma
 	if len(options) != len(hints) {
 		panic(fmt.Errorf("len(hints) %d != %d len(options)", len(hints), len(options)))
 	}
-	input := textinput.NewModel()
+	input := textinput.New()
 	input.Placeholder = "type to select"
 	input.Prompt = "   "
 	input.SetValue(value)
@@ -121,21 +122,21 @@ func (m Model) CurrentInput() string {
 	return m.textInput.Value()
 }
 
-func Update(msg tea.Msg, model Model) (Model, tea.Cmd) {
+func update(msg tea.Msg, model Model) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC:
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "ctrl+c":
 			return model, tea.Quit
-		case tea.KeyUp, tea.KeyCtrlP:
+		case "up", "ctrl+p":
 			if model.Cursor > 0 {
 				model.Cursor -= 1
 			} else {
 				model.Cursor = len(model.matched) - 1
 			}
 			return model, cmd
-		case tea.KeyDown, tea.KeyCtrlN:
+		case "down", "ctrl+n":
 			if model.Cursor < len(model.matched)-1 {
 				model.Cursor += 1
 			} else {
@@ -148,8 +149,8 @@ func Update(msg tea.Msg, model Model) (Model, tea.Cmd) {
 			model.Cursor = 0
 			return model, cmd
 		}
-	case tea.MouseEvent:
-		switch msg.Type {
+	case tea.MouseWheelMsg:
+		switch msg.Button {
 		case tea.MouseWheelUp:
 			if model.Cursor > 0 {
 				model.Cursor -= 1
@@ -183,7 +184,7 @@ func Update(msg tea.Msg, model Model) (Model, tea.Cmd) {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	return Update(msg, m)
+	return update(msg, m)
 }
 
 // wrap `text` between column `left` and `right`, applying `style`
@@ -201,8 +202,7 @@ func wrapLine(
 	return result
 }
 
-func (m Model) View() string {
-	s := strings.Builder{}
+func (m Model) Render(s io.StringWriter) {
 	s.WriteString(m.context + "\n")
 	s.WriteString(m.textInput.View() + "\n")
 	leftGutter := 3 // "   "
@@ -243,6 +243,4 @@ func (m Model) View() string {
 		s.WriteString(wrapLine(uint(leftColumn), hint, rightColumn, style))
 		s.WriteString("\n")
 	}
-
-	return s.String()
 }

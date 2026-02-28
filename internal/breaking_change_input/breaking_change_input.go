@@ -1,10 +1,11 @@
 package breaking_change_input
 
 import (
+	"io"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"github.com/muesli/termenv"
 	"github.com/skalt/git-cc/internal/config"
 	"github.com/skalt/git-cc/internal/helpbar"
@@ -23,18 +24,21 @@ func (m Model) Value() string {
 	return m.input.Value()
 }
 
-func (m Model) View() string {
-	return m.input.View() + "\n\n" + helpBar + "\n"
+func (m Model) Render(b io.StringWriter) {
+	b.WriteString(m.input.View())
+	b.WriteString("\n\n")
+	b.WriteString(helpBar)
+	b.WriteString("\n")
 }
 
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	var cmd tea.Cmd
+func (m Model) Update(msg tea.Msg) (out Model, cmd tea.Cmd) {
 	m.input, cmd = m.input.Update(msg)
-	return m, cmd
+	out = m
+	return
 }
 
 func NewModel() Model {
-	input := textinput.NewModel()
+	input := textinput.New()
 	input.Prompt = termenv.String("Breaking changes: ").Faint().String()
 	input.Placeholder = "if any."
 	input.Focus()

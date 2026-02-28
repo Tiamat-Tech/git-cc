@@ -1,11 +1,9 @@
 .PHONY: build install release changelog test-release-process test-rpm-install
-./dist/git-cc: ./main.go ./go.mod ./go.sum ./pkg/**/*.go ./internal/**/*.go cmd/*.go
-	go build -o ./dist/git-cc
-build: ./dist/git-cc
-unit-test:
-	go test ./...
-install:
+./bin/git-cc: ./main.go ./go.mod ./go.sum ./pkg/**/*.go ./internal/**/*.go cmd/*.go
 	go install
+build: ./dist/git-cc
+test:
+	go test ./...
 test-release-process:
 	goreleaser --rm-dist --snapshot --skip-publish
 test-rpm-install: test-release-process

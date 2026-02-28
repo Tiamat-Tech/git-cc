@@ -2,11 +2,11 @@ package scope_selector
 
 import (
 	"fmt"
+	"io"
 	"log"
-	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/skalt/git-cc/internal/config"
 	"github.com/skalt/git-cc/internal/helpbar"
 	"github.com/skalt/git-cc/internal/single_select"
@@ -73,8 +73,7 @@ func (m Model) Value() string {
 	return m.input.Value()
 }
 
-func (m Model) View() string {
-	s := strings.Builder{}
+func (m Model) Render(s io.StringWriter) {
 	if m.newScope != "" {
 		s.WriteString("new scope \"")
 		s.WriteString(m.newScope)
@@ -83,19 +82,17 @@ func (m Model) View() string {
 			s.WriteString("not ")
 		}
 		s.WriteString("copied to clipboard\n")
-		return s.String()
 	}
-	s.WriteString(m.input.View())
-	s.WriteRune('\n')
-	s.WriteString(m.helpBar.View())
-	return s.String()
+	m.input.Render(s)
+	s.WriteString("\n")
+	m.helpBar.Render(s)
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
+	case tea.KeyPressMsg:
+		switch msg.Code {
 		case tea.KeyEnter, tea.KeyTab:
 			if m.Value() == "new scope" {
 				m.newScope = m.input.CurrentInput()

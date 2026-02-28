@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/skalt/git-cc/internal/breaking_change_input"
 	"github.com/skalt/git-cc/internal/config"
 	"github.com/skalt/git-cc/internal/description_editor"
@@ -37,7 +38,7 @@ var (
 )
 
 type InputComponent interface {
-	View() string
+	Render(io.StringWriter)
 	Value() string
 }
 
@@ -51,10 +52,11 @@ type model struct {
 	breakingChangeInput breaking_change_input.Model
 	// the width of the terminal; needed for instantiating components
 	// width  int
-	choice chan string
 	// any body stashed during the initial parse of command-line --message args
 	remainingBody string
 }
+
+var _ tea.Model = model{}
 
 // returns whether the minimum requirements for a conventional commit are met.
 func (m model) ready() bool {
@@ -116,7 +118,7 @@ func (m model) currentComponent() InputComponent {
 // Pass a channel to the model to listen to the result value. This is a
 // function that returns the initialize function and is typically how you would
 // pass arguments to a tea.Init function.
-func initialModel(choice chan string, cc *parser.CC, cfg *config.Cfg) model {
+func initialModel(cc *parser.CC, cfg *config.Cfg) model {
 	typeModel := type_selector.NewModel(cc, cfg)
 	scopeModel := scope_selector.NewModel(cc, *cfg)
 	descModel := description_editor.NewModel(
@@ -139,7 +141,6 @@ func initialModel(choice chan string, cc *parser.CC, cfg *config.Cfg) model {
 		breakingChanges,
 	}
 	m := model{
-		choice:              choice,
 		commit:              commit,
 		typeInput:           typeModel,
 		scopeInput:          scopeModel,
@@ -201,17 +202,19 @@ func (m model) submit() model {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyCtrlD:
-			m.choice <- ""
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "ctrl+c", "ctrl+d":
 			return m, tea.Quit
-		case tea.KeyShiftTab:
-			if m.viewing > commitTypeIndex {
-				m.viewing--
-			}
-			return m, cmd
+		}
+		switch msg.Code {
 		case tea.KeyEnter, tea.KeyTab:
+			if msg.Mod == tea.ModShift {
+				if m.viewing > commitTypeIndex {
+					m.viewing--
+				}
+				return m, cmd
+			}
 			switch m.viewing {
 			default:
 				m = m.submit().advance()
@@ -231,7 +234,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case breakingChangeIndex:
 				m = m.submit()
 				if m.ready() {
-					m.choice <- m.value()
 					return m, tea.Quit
 				} else {
 					// TODO: better validation messages
@@ -259,6 +261,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m model) View() string {
-	return m.currentComponent().View() + "\n"
+func (m model) View() (v tea.View) {
+	v.AltScreen = true
+	s := strings.Builder{}
+	m.currentComponent().Render(&s)
+	s.WriteString("\n")
+	v.Content = s.String()
+	return v
 }
