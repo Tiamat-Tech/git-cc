@@ -6,22 +6,28 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"runtime/debug"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/skalt/git-cc/internal/config"
+	"github.com/skalt/git-cc/internal/utils"
 	"github.com/skalt/git-cc/pkg/parser"
 )
 
-func versionMode() {
-	version := "no version set"
-	if info, ok := debug.ReadBuildInfo(); ok {
-		version = info.Main.Version
-	}
-	fmt.Printf("git-cc %s\n", version)
+var version, commit, date string
+
+func printVersion(version, commit, date string) {
+	s := strings.Builder{}
+	s.WriteString("git-cc ")
+	s.WriteString("<unknown>")
+	s.WriteString(" commit ")
+	s.WriteString(commit)
+	s.WriteString(" built ")
+	s.WriteString(date)
+	s.WriteRune('\n')
+	fmt.Print(s.String())
 }
 
 // construct a shell `git commit` command with flags delegated from the git-cc
@@ -169,7 +175,7 @@ func mainMode(cmd *cobra.Command, args []string, cfg *config.Cfg) {
 
 func redoMessage(cmd *cobra.Command) {
 	flags := cmd.Flags()
-	msg, _ := flags.GetStringArray("message")
+	msg := utils.Must(flags.GetStringArray("message"))
 	if len(msg) > 0 {
 		log.Fatal("-m|--message is incompatible with --redo")
 	}
@@ -182,7 +188,7 @@ func redoMessage(cmd *cobra.Command) {
 	}
 	empty := true
 	for _, line := range strings.Split(
-		strings.Trim(string(data), "\r\n\t "),
+		strings.TrimSpace(string(data)),
 		"\n",
 	) {
 		if !strings.HasPrefix(strings.TrimLeft(line, " \t\r\n"), "#") {
@@ -194,96 +200,105 @@ func redoMessage(cmd *cobra.Command) {
 		log.Fatalf("Empty commit message: %s", commitMessagePath)
 	}
 
-	flags.Set("message", string(data))
+	utils.Check(flags.Set("message", string(data)))
 }
 
 // Note: I'm not using cobra subcommands since they prevent passing arbitrary arguments,
 // and I'd like to be able to start an invocation like `git-cc this is the commit message`
 // without having to think about whether `this` is a subcommand.
 
-var Cmd = &cobra.Command{
-	Use:   "git-cc",
-	Short: "write conventional commits",
-	Run: func(cmd *cobra.Command, args []string) {
-		flags := cmd.Flags()
-		if version, _ := flags.GetBool("version"); version {
-			versionMode()
-			os.Exit(0)
-		} else if genCompletion, _ := flags.GetBool("generate-shell-completion"); genCompletion {
-			generateShellCompletion(cmd, args)
-			os.Exit(0)
-		} else if genManPage, _ := flags.GetBool("generate-man-page"); genManPage {
-			generateManPage(cmd, args)
-			os.Exit(0)
-		} else {
-			dryRun, _ := cmd.Flags().GetBool("dry-run")
-			cfg, err := config.Init(dryRun)
-			if err != nil {
-				log.Fatalf("%s", err)
-			}
-			if showConfig, _ := flags.GetBool("show-config"); showConfig {
-				repoRoot, _ := config.GetGitRepoRoot()
-				_, tried, _ := config.FindCCConfigFile(repoRoot)
-				for _, f := range tried {
-					fmt.Printf("# %s\n", f)
-				}
-				file := cfg.ConfigFile
-				if file == "" {
-					file = "<default>"
-				}
-				fmt.Printf("config file path: %s\n", file)
-				os.Exit(0)
-			}
-			if init, _ := flags.GetBool("init"); init {
-				format, _ := cmd.Flags().GetString("config-format")
-				switch format {
-				case "yaml", "yml", "toml":
-					break
-				default:
-					log.Fatalf("unsupported default config-file format: %s", format)
-				}
-				if err != nil {
-					log.Fatalf("%s", err)
-				}
-				if err := config.InitDefaultCfgFile(cfg, format); err != nil {
-					log.Fatalf("%s", err)
-				}
-				os.Exit(0)
-			}
-			if redo, _ := flags.GetBool("redo"); redo {
-				redoMessage(cmd)
-			}
-			mainMode(cmd, args, cfg)
-		}
-	},
-}
-
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "initialize a config file if none is present",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("init", args)
-		dryRun, _ := cmd.Flags().GetBool("dry-run")
-		format, _ := cmd.Flags().GetString("config-format")
+func run(cmd *cobra.Command, args []string) {
+	flags := cmd.Flags()
+	if shouldPrintVersion, _ := flags.GetBool("version"); shouldPrintVersion {
+		printVersion(version, commit, date)
+		os.Exit(0)
+	} else if genCompletion, _ := flags.GetBool("generate-shell-completion"); genCompletion {
+		generateShellCompletion(cmd, args)
+		os.Exit(0)
+	} else if genManPage, _ := flags.GetBool("generate-man-page"); genManPage {
+		generateManPage(cmd, args)
+		os.Exit(0)
+	} else {
+		dryRun := utils.Must(cmd.Flags().GetBool("dry-run"))
 		cfg, err := config.Init(dryRun)
-		switch format {
-		case "yaml", "yml", "toml":
-			break
-		default:
-			log.Fatalf("unsupported default config-file format: %s", format)
-		}
 		if err != nil {
 			log.Fatalf("%s", err)
 		}
-		if err := config.InitDefaultCfgFile(cfg, format); err != nil {
-			log.Fatalf("%s", err)
+		if showConfig, _ := flags.GetBool("show-config"); showConfig {
+			repoRoot, _ := config.GetGitRepoRoot()
+			_, tried, _ := config.FindCCConfigFile(repoRoot)
+			for _, f := range tried {
+				fmt.Printf("# %s\n", f)
+			}
+			file := cfg.ConfigFile
+			if file == "" {
+				file = "<default>"
+			}
+			fmt.Printf("config file path: %s\n", file)
+			os.Exit(0)
 		}
-	},
+		if init := utils.Must(flags.GetBool("init")); init {
+			format, _ := cmd.Flags().GetString("config-format")
+			switch format {
+			case "yaml", "yml", "toml":
+				break
+			default:
+				log.Fatalf("unsupported default config-file format: %s", format)
+			}
+			if err != nil {
+				log.Fatalf("%s", err)
+			}
+			if err := config.InitDefaultCfgFile(cfg, format); err != nil {
+				log.Fatalf("%s", err)
+			}
+			os.Exit(0)
+		}
+		if redo := utils.Must(flags.GetBool("redo")); redo {
+			redoMessage(cmd)
+		}
+		mainMode(cmd, args, cfg)
+	}
 }
 
-func init() {
+func runInit(cmd *cobra.Command, args []string) {
+	fmt.Println("init", args)
+	dryRun, _ := cmd.Flags().GetBool("dry-run")
+	format, _ := cmd.Flags().GetString("config-format")
+	cfg, err := config.Init(dryRun)
+	switch format {
+	case "yaml", "yml", "toml":
+		break
+	default:
+		log.Fatalf("unsupported default config-file format: %s", format)
+	}
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+	if err := config.InitDefaultCfgFile(cfg, format); err != nil {
+		log.Fatalf("%s", err)
+	}
+}
+
+func initCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "init",
+		Short: "initialize a config file if none is present",
+		Run:   runInit,
+	}
+}
+
+func Cmd(version_, commit_, date_ string) (cmd *cobra.Command) {
+	version = version_
+	commit = commit_
+	date = date_
+
+	cmd = &cobra.Command{
+		Use:   "git-cc",
+		Short: "write conventional commits",
+		Run:   run,
+	}
 	{ // flags for git-cc
-		flags := Cmd.Flags()
+		flags := cmd.Flags()
 		flags.BoolP("help", "h", false, "print the usage of git-cc")
 		flags.Bool("dry-run", false, "Only print the resulting conventional commit message; don't commit.")
 		flags.Bool("redo", false, "Reuse your last commit message")
@@ -317,20 +332,9 @@ func init() {
 		flags.Bool("init", false, "initialize a config file if none is present")
 		flags.String("config-format", "yaml", "The format of the config file to generate. One of: toml, yml, yaml")
 
-		Cmd.MarkFlagsMutuallyExclusive("signoff", "no-signoff")
-		Cmd.MarkFlagsMutuallyExclusive("verify", "no-verify")
+		cmd.MarkFlagsMutuallyExclusive("signoff", "no-signoff")
+		cmd.MarkFlagsMutuallyExclusive("verify", "no-verify")
 	}
-	// { // flags for git-cc init
-	// 	flags := initCmd.Flags()
-	// 	flags.Bool("dry-run", false, "Only print the resulting configuration; don't commit.")
-	// 	flags.StringP(
-	// 		"format",
-	// 		"f",
-	// 		"yaml",
-	// 		"The format of the config file to generate. One of: toml, yml, yaml",
-	// 	)
-	// }
-	// { // assemble sub-commands
-	// 	Cmd.AddCommand(initCmd)
-	// }
+	cmd.AddCommand(initCmd())
+	return cmd
 }

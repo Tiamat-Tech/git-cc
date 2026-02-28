@@ -15,6 +15,7 @@ import (
 
 	toml "github.com/BurntSushi/toml"
 	"github.com/muesli/termenv"
+	"github.com/skalt/git-cc/internal/utils"
 	orderedmap "github.com/wk8/go-ordered-map/v2"
 	yaml "gopkg.in/yaml.v3"
 )
@@ -201,10 +202,8 @@ func ConstructDefaultFile(
 	switch filepath.Ext(cfg.ConfigFile) {
 	case ".yaml", ".yml":
 		render = renderYaml
-		break
 	case ".toml":
 		render = renderToml
-		break
 	default:
 		log.Fatalf("unsupported default config file type: %s", cfg.ConfigFile)
 	}
@@ -719,7 +718,7 @@ func EditCfgFileCmd(cfg *Cfg) *exec.Cmd {
 		}
 	}
 	if cfg.ConfigFile == "" {
-		InitDefaultCfgFile(cfg, "yaml")
+		utils.Check(InitDefaultCfgFile(cfg, "yaml"))
 	}
 	editCmd = append(editCmd, cfg.ConfigFile)
 	cmd := exec.Command(editCmd[0], editCmd[1:]...)

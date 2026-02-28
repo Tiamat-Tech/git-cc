@@ -27,17 +27,21 @@ func generateShellCompletion(cmd *cobra.Command, args []string) {
 			len(args), args,
 		)
 	}
+	var err error
 	switch shell {
 	case "bash":
-		cmd.Root().GenBashCompletion(os.Stdout)
+		err = cmd.Root().GenBashCompletion(os.Stdout)
 	case "zsh":
-		cmd.Root().GenZshCompletion(os.Stdout)
+		err = cmd.Root().GenZshCompletion(os.Stdout)
 	case "fish":
-		cmd.Root().GenFishCompletion(os.Stdout, true)
+		err = cmd.Root().GenFishCompletion(os.Stdout, true)
 	case "powershell":
-		cmd.Root().GenPowerShellCompletion(os.Stdout)
+		err = cmd.Root().GenPowerShellCompletion(os.Stdout)
 	default:
 		log.Fatal(fmt.Errorf("unknown/unsupported shell `%s`", shell))
+	}
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"github.com/skalt/git-cc/internal/config"
 	"github.com/skalt/git-cc/internal/helpbar"
 	"github.com/skalt/git-cc/internal/single_select"
+	"github.com/skalt/git-cc/internal/utils"
 	"github.com/skalt/git-cc/pkg/parser"
 )
 
@@ -36,7 +37,7 @@ func (m Model) Value() string {
 
 func (m Model) Render(s io.StringWriter) {
 	m.input.Render(s)
-	s.WriteString("\n")
+	_ = utils.Must(s.WriteString("\n"))
 	m.helpBar.Render(s)
 }
 

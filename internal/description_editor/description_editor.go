@@ -14,6 +14,7 @@ import (
 	"github.com/muesli/termenv"
 	"github.com/skalt/git-cc/internal/config"
 	"github.com/skalt/git-cc/internal/helpbar"
+	"github.com/skalt/git-cc/internal/utils"
 )
 
 const prePrompt = "A short description of the changes:"
@@ -105,11 +106,18 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 }
 
+func must[T any](t T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
 func (m Model) Render(s io.StringWriter) {
-	s.WriteString(wordwrap.String(config.Faint(prePrompt), m.width))
-	s.WriteString("\n\n")
-	s.WriteString(m.input.View())
-	s.WriteString("\n\n")
+	_ = must(s.WriteString(wordwrap.String(config.Faint(prePrompt), m.width)))
+	_ = must(s.WriteString("\n\n"))
+	_ = must(s.WriteString(m.input.View()))
+	_ = must(s.WriteString("\n\n"))
 	// helpBar := m.helpBar.View()
 	counter := viewCounter(m)
 	m.helpBar.Render(s)
@@ -120,8 +128,8 @@ func (m Model) Render(s io.StringWriter) {
 	if ansi.PrintableRuneWidth(last)+ansi.PrintableRuneWidth(counter) >= m.width {
 		x = ("\n")
 	}
-	s.WriteString(x)
-	s.WriteString(counter)
+	_ = utils.Must(s.WriteString(x))
+	_ = utils.Must(s.WriteString(counter))
 }
 
 func (m Model) Init() tea.Cmd {

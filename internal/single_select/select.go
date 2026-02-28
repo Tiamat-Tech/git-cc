@@ -11,6 +11,7 @@ import (
 	"github.com/muesli/reflow/padding"
 	"github.com/muesli/reflow/wordwrap"
 	term "github.com/muesli/termenv"
+	"github.com/skalt/git-cc/internal/utils"
 )
 
 type Model struct {
@@ -203,8 +204,8 @@ func wrapLine(
 }
 
 func (m Model) Render(s io.StringWriter) {
-	s.WriteString(m.context + "\n")
-	s.WriteString(m.textInput.View() + "\n")
+	_ = utils.Must(s.WriteString(m.context + "\n"))
+	_ = utils.Must(s.WriteString(m.textInput.View() + "\n"))
 	leftGutter := 3 // "   "
 	maxOptLen := m.maxOptLen()
 	leftColumn := (leftGutter + maxOptLen) + 1 // for the space
@@ -222,16 +223,16 @@ func (m Model) Render(s io.StringWriter) {
 			style := func(str string) term.Style {
 				return term.String(str).Underline()
 			}
-			s.WriteString(" > " + style(opt).Bold().String())
-			s.WriteString(wrapLine(uint(leftColumn), hint, rightColumn, style))
+			_ = utils.Must(s.WriteString(" > " + style(opt).Bold().String()))
+			_ = utils.Must(s.WriteString(wrapLine(uint(leftColumn), hint, rightColumn, style)))
 		} else {
 			style := func(str string) term.Style {
 				return term.String(str).Faint()
 			}
-			s.WriteString("   " + opt)
-			s.WriteString(wrapLine(uint(leftColumn), hint, rightColumn, style))
+			_ = utils.Must(s.WriteString("   " + opt))
+			_ = utils.Must(s.WriteString(wrapLine(uint(leftColumn), hint, rightColumn, style)))
 		}
-		s.WriteString("\n")
+		_ = utils.Must(s.WriteString("\n"))
 	}
 	// s.WriteString("\n")
 	style := func(str string) term.Style {
@@ -239,8 +240,8 @@ func (m Model) Render(s io.StringWriter) {
 	}
 	for _, rejected := range m.filtered {
 		opt, hint := style(pad(rejected[0], maxOptLen)).String(), rejected[1]
-		s.WriteString("   " + opt + " ")
-		s.WriteString(wrapLine(uint(leftColumn), hint, rightColumn, style))
-		s.WriteString("\n")
+		_ = utils.Must(s.WriteString("   " + opt + " "))
+		_ = utils.Must(s.WriteString(wrapLine(uint(leftColumn), hint, rightColumn, style)))
+		_ = utils.Must(s.WriteString("\n"))
 	}
 }

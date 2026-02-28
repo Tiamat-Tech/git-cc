@@ -31,6 +31,7 @@
             nil
             gopls
             gotools
+            golangci-lint
             libfaketime
             glibc
             git

@@ -39,20 +39,26 @@ func (m Model) Render(s io.StringWriter) {
 	}
 	item, items := m.items[0], m.items[1:]
 
-	s.WriteString(config.Faint(item))
+	_ = must(s.WriteString(config.Faint(item)))
 	currentLen := ansi.PrintableRuneWidth(item)
 
 	sep, sepLen := config.Faint("; "), 2 // 2 == len(sep)
 	for _, item := range items {
 		if currentLen+sepLen+ansi.PrintableRuneWidth(item) <= m.width {
-			s.WriteString(sep)
-			s.WriteString(config.Faint(item))
+			_ = must(s.WriteString(sep))
+			_ = must(s.WriteString(config.Faint(item)))
 			currentLen += sepLen + len(item)
 		} else {
-			s.WriteString("\n")
-			currentLen, _ = s.WriteString(config.Faint(item))
+			_ = must(s.WriteString("\n"))
+			currentLen = must(s.WriteString(config.Faint(item)))
 		}
 	}
+}
+func must[T any](t T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return t
 }
 
 func (m Model) View() string {

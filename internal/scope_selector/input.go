@@ -10,6 +10,7 @@ import (
 	"github.com/skalt/git-cc/internal/config"
 	"github.com/skalt/git-cc/internal/helpbar"
 	"github.com/skalt/git-cc/internal/single_select"
+	"github.com/skalt/git-cc/internal/utils"
 	"github.com/skalt/git-cc/pkg/parser"
 )
 
@@ -75,16 +76,16 @@ func (m Model) Value() string {
 
 func (m Model) Render(s io.StringWriter) {
 	if m.newScope != "" {
-		s.WriteString("new scope \"")
-		s.WriteString(m.newScope)
-		s.WriteString("\" ")
+		_ = utils.Must(s.WriteString("new scope \""))
+		_ = utils.Must(s.WriteString(m.newScope))
+		_ = utils.Must(s.WriteString("\" "))
 		if !m.copiedToClipboard {
-			s.WriteString("not ")
+			_ = utils.Must(s.WriteString("not "))
 		}
-		s.WriteString("copied to clipboard\n")
+		_ = utils.Must(s.WriteString("copied to clipboard\n"))
 	}
 	m.input.Render(s)
-	s.WriteString("\n")
+	_ = utils.Must(s.WriteString("\n"))
 	m.helpBar.Render(s)
 }
 

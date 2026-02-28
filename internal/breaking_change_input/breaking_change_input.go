@@ -9,6 +9,7 @@ import (
 	"github.com/muesli/termenv"
 	"github.com/skalt/git-cc/internal/config"
 	"github.com/skalt/git-cc/internal/helpbar"
+	"github.com/skalt/git-cc/internal/utils"
 )
 
 type Model struct {
@@ -25,10 +26,10 @@ func (m Model) Value() string {
 }
 
 func (m Model) Render(b io.StringWriter) {
-	b.WriteString(m.input.View())
-	b.WriteString("\n\n")
-	b.WriteString(helpBar)
-	b.WriteString("\n")
+	_ = utils.Must(b.WriteString(m.input.View()))
+	_ = utils.Must(b.WriteString("\n\n"))
+	_ = utils.Must(b.WriteString(helpBar))
+	_ = utils.Must(b.WriteString("\n"))
 }
 
 func (m Model) Update(msg tea.Msg) (out Model, cmd tea.Cmd) {
