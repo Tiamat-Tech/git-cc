@@ -1,9 +1,9 @@
 package type_selector
 
 import (
-	"strings"
+	"io"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/skalt/git-cc/internal/config"
 	"github.com/skalt/git-cc/internal/helpbar"
 	"github.com/skalt/git-cc/internal/single_select"
@@ -34,12 +34,10 @@ func (m Model) Value() string {
 	return m.input.Value()
 }
 
-func (m Model) View() string {
-	s := strings.Builder{}
-	s.WriteString(m.input.View())
-	s.WriteRune('\n')
-	s.WriteString(m.helpBar.View())
-	return s.String()
+func (m Model) Render(s io.StringWriter) {
+	m.input.Render(s)
+	s.WriteString("\n")
+	m.helpBar.Render(s)
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {

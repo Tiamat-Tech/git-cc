@@ -1,9 +1,10 @@
 package helpbar
 
 import (
+	"io"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/muesli/reflow/ansi"
 	"github.com/skalt/git-cc/internal/config"
 )
@@ -32,13 +33,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) View() string {
+func (m Model) Render(s io.StringWriter) {
 	if len(m.items) == 0 {
-		return ""
+		return
 	}
 	item, items := m.items[0], m.items[1:]
 
-	s := strings.Builder{}
 	s.WriteString(config.Faint(item))
 	currentLen := ansi.PrintableRuneWidth(item)
 
@@ -49,9 +49,14 @@ func (m Model) View() string {
 			s.WriteString(config.Faint(item))
 			currentLen += sepLen + len(item)
 		} else {
-			s.WriteRune('\n')
+			s.WriteString("\n")
 			currentLen, _ = s.WriteString(config.Faint(item))
 		}
 	}
-	return s.String()
+}
+
+func (m Model) View() string {
+	b := strings.Builder{}
+	m.Render(&b)
+	return b.String()
 }

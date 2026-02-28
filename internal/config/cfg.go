@@ -653,7 +653,7 @@ func GetEditor() string {
 	if err != nil {
 		msg := "unable to open the fallback editor"
 		hint := "hint: set the EDITOR env variable or install vi"
-		log.Fatalf(fmt.Sprintf("%s: %q\n%s\n", msg, editor, hint))
+		log.Fatalf("%s: %q\n%s\n", msg, editor, hint)
 	}
 	return editor
 }

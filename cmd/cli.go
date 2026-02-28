@@ -6,22 +6,21 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/skalt/git-cc/internal/config"
 	"github.com/skalt/git-cc/pkg/parser"
 )
 
-var version string
-
-func SetVersion(v string) {
-	version = v
-}
-
 func versionMode() {
+	version := "no version set"
+	if info, ok := debug.ReadBuildInfo(); ok {
+		version = info.Main.Version
+	}
 	fmt.Printf("git-cc %s\n", version)
 }
 
@@ -141,26 +140,27 @@ func mainMode(cmd *cobra.Command, args []string, cfg *config.Cfg) {
 	}
 
 	if validationErrors != 0 {
-		choice := make(chan string, 1)
-		m := initialModel(choice, cc, cfg)
-		ui := tea.NewProgram(m, tea.WithInputTTY(), tea.WithAltScreen())
-		if err := ui.Start(); err != nil {
+		m := initialModel(cc, cfg)
+		ui := tea.NewProgram(m)
+		out, err := ui.Run()
+		if err != nil {
 			log.Fatal(err)
 		}
-		if result := <-choice; result == "" {
-			close(choice)
+		result := out.(model)
+		if !result.ready() {
 			os.Exit(1) // no submission
 		} else {
+			commitMessage := result.value()
 			f := config.GetCommitMessageFile()
 			file, err := os.Create(f)
 			if err != nil {
 				log.Fatalf("unable to create fil %s: %+v", f, err)
 			}
-			_, err = file.Write([]byte(result))
+			_, err = file.Write([]byte(commitMessage))
 			if err != nil {
 				log.Fatalf("unable to write to file %s: %+v", f, err)
 			}
-			doCommit(result, cfg.DryRun, commitParams)
+			doCommit(commitMessage, cfg.DryRun, commitParams)
 		}
 	} else {
 		doCommit(cc.ToString(), cfg.DryRun, commitParams)

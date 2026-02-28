@@ -4,10 +4,11 @@ package description_editor
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/muesli/termenv"
@@ -18,7 +19,7 @@ import (
 const prePrompt = "A short description of the changes:"
 
 type Model struct {
-	width       int
+	width       int             // TODO: drop in favor of input.Width()
 	input       textinput.Model // TODO: make input a pointer
 	lengthLimit int
 	helpBar     helpbar.Model
@@ -43,7 +44,7 @@ func (m Model) Value() string {
 }
 
 func NewModel(lengthLimit int, value string, enforced bool) Model {
-	input := textinput.NewModel()
+	input := textinput.New()
 	input.SetValue(value)
 	input.SetCursor(len(value))
 	// input.Cursor = len(value)
@@ -83,9 +84,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyCtrlD:
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "ctrl+c", "ctrl+d":
 			return m, tea.Quit
 		default:
 			m.input, cmd = m.input.Update(msg)
@@ -94,7 +95,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		m.helpBar, cmd = m.helpBar.Update(msg)
-		m.input.Width = msg.Width
+		m.input.SetWidth(msg.Width)
 		m.width = msg.Width
 		return m, cmd
 	default:
@@ -104,27 +105,23 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 }
 
-func (m Model) View() string {
-	s := strings.Builder{}
+func (m Model) Render(s io.StringWriter) {
 	s.WriteString(wordwrap.String(config.Faint(prePrompt), m.width))
-	s.WriteRune('\n')
-	s.WriteRune('\n')
+	s.WriteString("\n\n")
 	s.WriteString(m.input.View())
-	s.WriteRune('\n')
-	s.WriteRune('\n')
-	helpBar := m.helpBar.View()
+	s.WriteString("\n\n")
+	// helpBar := m.helpBar.View()
 	counter := viewCounter(m)
-	s.WriteString(helpBar)
+	m.helpBar.Render(s)
 
-	helpBarLines := strings.Split(helpBar, "\n")
+	helpBarLines := strings.Split(m.helpBar.View(), "\n") // HACK
 	last := helpBarLines[len(helpBarLines)-1]
+	x := " "
 	if ansi.PrintableRuneWidth(last)+ansi.PrintableRuneWidth(counter) >= m.width {
-		s.WriteRune('\n')
-	} else {
-		s.WriteRune(' ')
+		x = ("\n")
 	}
+	s.WriteString(x)
 	s.WriteString(counter)
-	return s.String()
 }
 
 func (m Model) Init() tea.Cmd {
